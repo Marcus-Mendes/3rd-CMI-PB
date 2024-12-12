@@ -89,17 +89,9 @@ y_train = y_train.loc[X_train.index].dropna()
 X_test = X_test.dropna()
 y_test = y_test.loc[X_test.index].dropna()
 
-# Apply log transformation to target variable to reduce skewness
-print("Skewness before log transformation (Training):", y_train.skew())
-print("Skewness before log transformation (Testing):", y_test.skew())
-
 y_train = np.log1p(y_train)
 y_test = np.log1p(y_test)
 
-print("Skewness after log transformation (Training):", y_train.skew())
-print("Skewness after log transformation (Testing):", y_test.skew())
-
-# Since the data is already normalized, no scaling needed
 X_train_processed = X_train
 X_test_processed = X_test
 
@@ -206,14 +198,12 @@ X_new = pd.get_dummies(X_new, columns=['biological_sex', 'race', 'infancy_vac'],
 
 X_new = X_new.reindex(columns=X_train.columns, fill_value=0)
 
-print("Before handling missing values, X_new shape:", X_new.shape)
 missing_values = X_new.isnull().sum()
-print("Missing values in each column:\n", missing_values)
 
 X_new = X_new.fillna(X_new.mean())
-print("After handling missing values, X_new shape:", X_new.shape)
 
 new_indices = X_new.index
+
 X_new_selected = X_new.values
 
 predictions_log = best_model.predict(X_new_selected)
@@ -222,9 +212,7 @@ predicted_monocytes_day1 = np.expm1(predictions_log)
 monocytes_day_0 = day_0_new.loc[new_indices]['Monocytes']
 monocytes_day_0 = monocytes_day_0.fillna(monocytes_day_0.mean())
 
-print("Skewness before log transformation (Day 0 Monocytes):", monocytes_day_0.skew())
 monocytes_day_0_log = np.log1p(monocytes_day_0)
-print("Skewness after log transformation (Day 0 Monocytes):", monocytes_day_0_log.skew())
 
 fold_change = (predicted_monocytes_day1 + 1) / (monocytes_day_0 + 1)
 
@@ -236,19 +224,17 @@ results_df = pd.DataFrame({
 })
 
 results_df['Predicted_Monocytes_Rank'] = results_df['Predicted_Monocytes_Day1'].rank(ascending=False)
+
 results_df['Fold_Change_Rank'] = results_df['Fold_Change'].rank(ascending=False)
 
 results_df = results_df.sort_values('Predicted_Monocytes_Rank').reset_index(drop=True)
-print(results_df[['subject_id', 'Predicted_Monocytes_Day1', 'Predicted_Monocytes_Rank', 'Fold_Change', 'Fold_Change_Rank']])
 
 existing_df = pd.read_csv(existing_file_path, delimiter='\t')
-
-print("Columns in the existing DataFrame:")
-print(existing_df.columns.tolist())
 
 results_df = results_df.rename(columns={'subject_id': 'SubjectID'})
 
 update_columns = ['SubjectID', 'Predicted_Monocytes_Rank', 'Fold_Change_Rank']
+
 results_to_merge = results_df[update_columns]
 
 results_to_merge = results_to_merge.rename(columns={
@@ -267,4 +253,3 @@ if '2.2) Monocytes-D1-FC-Rank_x' in updated_df.columns:
     updated_df.drop(columns=['2.2) Monocytes-D1-FC-Rank_x', '2.2) Monocytes-D1-FC-Rank_y'], inplace=True)
 
 updated_df.to_csv(output_file_path, sep='\t', index=False)
-print(f"Updated file saved to {output_file_path}")
